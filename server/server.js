@@ -24,7 +24,8 @@ app.use("/api/inngest", serve({ client: inngest, functions }));
 app.use("/api/workspaces",protect, worksapceRouter)
 app.use("/api/projects", protect, projectRouter)
 app.use("/api/tasks", protect, taskRouter)
-app.use("/api/comments", protect, commentRoutes)
+app.use("/api/comments", protect, commentRoutes);
+
 
 
 const PORT = process.env.PORT || 5000

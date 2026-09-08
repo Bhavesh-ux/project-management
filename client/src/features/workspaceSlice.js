@@ -32,9 +32,6 @@ export const fetchWorkspaces = createAsyncThunk(
                 data
             );
 
-            // Backend response:
-            // { workspaces: [...] }
-
             return data.workspaces || [];
 
         } catch (error) {
@@ -53,7 +50,6 @@ export const fetchWorkspaces = createAsyncThunk(
     }
 );
 
-
 // ======================================================
 // INITIAL STATE
 // ======================================================
@@ -64,7 +60,6 @@ const initialState = {
     loading: false,
     error: null,
 };
-
 
 // ======================================================
 // SLICE
@@ -82,7 +77,9 @@ const workspaceSlice = createSlice({
         // ==================================================
 
         setWorkspaces: (state, action) => {
-            state.workspaces = action.payload || [];
+            state.workspaces = Array.isArray(action.payload)
+                ? action.payload
+                : [];
 
             if (
                 !state.currentWorkspace &&
@@ -98,17 +95,15 @@ const workspaceSlice = createSlice({
             }
         },
 
-
         // ==================================================
         // SET CURRENT WORKSPACE
         // ==================================================
 
         setCurrentWorkspace: (state, action) => {
-            const workspace =
-                state.workspaces.find(
-                    (workspace) =>
-                        workspace.id === action.payload
-                );
+            const workspace = state.workspaces.find(
+                (workspace) =>
+                    workspace.id === action.payload
+            );
 
             if (workspace) {
                 state.currentWorkspace = workspace;
@@ -120,7 +115,6 @@ const workspaceSlice = createSlice({
             }
         },
 
-
         // ==================================================
         // ADD WORKSPACE
         // ==================================================
@@ -128,9 +122,7 @@ const workspaceSlice = createSlice({
         addWorkspace: (state, action) => {
             if (!action.payload) return;
 
-            state.workspaces.push(
-                action.payload
-            );
+            state.workspaces.push(action.payload);
 
             state.currentWorkspace =
                 action.payload;
@@ -141,12 +133,13 @@ const workspaceSlice = createSlice({
             );
         },
 
-
         // ==================================================
         // UPDATE WORKSPACE
         // ==================================================
 
         updateWorkspace: (state, action) => {
+            if (!action.payload) return;
+
             state.workspaces =
                 state.workspaces.map(
                     (workspace) =>
@@ -163,7 +156,6 @@ const workspaceSlice = createSlice({
                     action.payload;
             }
         },
-
 
         // ==================================================
         // DELETE WORKSPACE
@@ -196,13 +188,18 @@ const workspaceSlice = createSlice({
             }
         },
 
-
         // ==================================================
         // ADD PROJECT
         // ==================================================
 
         addProject: (state, action) => {
-            if (!state.currentWorkspace) return;
+            // Don't add undefined/null project
+            if (
+                !state.currentWorkspace ||
+                !action.payload
+            ) {
+                return;
+            }
 
             const workspaceId =
                 state.currentWorkspace.id;
@@ -221,7 +218,9 @@ const workspaceSlice = createSlice({
                             ...workspace,
 
                             projects: [
-                                ...(workspace.projects || []),
+                                ...(workspace.projects || [])
+                                    .filter(Boolean),
+
                                 action.payload,
                             ],
                         };
@@ -235,13 +234,17 @@ const workspaceSlice = createSlice({
                 );
         },
 
-
         // ==================================================
         // ADD TASK
         // ==================================================
 
         addTask: (state, action) => {
-            if (!state.currentWorkspace) return;
+            if (
+                !state.currentWorkspace ||
+                !action.payload
+            ) {
+                return;
+            }
 
             const workspaceId =
                 state.currentWorkspace.id;
@@ -261,20 +264,24 @@ const workspaceSlice = createSlice({
 
                             projects: (
                                 workspace.projects || []
-                            ).map(
-                                (project) =>
-                                    project.id ===
-                                    action.payload.projectId
-                                        ? {
-                                              ...project,
+                            )
+                                .filter(Boolean)
+                                .map(
+                                    (project) =>
+                                        project.id ===
+                                        action.payload.projectId
+                                            ? {
+                                                  ...project,
 
-                                              tasks: [
-                                                  ...(project.tasks || []),
-                                                  action.payload,
-                                              ],
-                                          }
-                                        : project
-                            ),
+                                                  tasks: [
+                                                      ...(project.tasks || [])
+                                                          .filter(Boolean),
+
+                                                      action.payload,
+                                                  ],
+                                              }
+                                            : project
+                                ),
                         };
                     }
                 );
@@ -285,14 +292,18 @@ const workspaceSlice = createSlice({
                         workspace.id === workspaceId
                 );
         },
-
 
         // ==================================================
         // UPDATE TASK
         // ==================================================
 
         updateTask: (state, action) => {
-            if (!state.currentWorkspace) return;
+            if (
+                !state.currentWorkspace ||
+                !action.payload
+            ) {
+                return;
+            }
 
             const workspaceId =
                 state.currentWorkspace.id;
@@ -312,25 +323,29 @@ const workspaceSlice = createSlice({
 
                             projects: (
                                 workspace.projects || []
-                            ).map(
-                                (project) =>
-                                    project.id ===
-                                    action.payload.projectId
-                                        ? {
-                                              ...project,
+                            )
+                                .filter(Boolean)
+                                .map(
+                                    (project) =>
+                                        project.id ===
+                                        action.payload.projectId
+                                            ? {
+                                                  ...project,
 
-                                              tasks: (
-                                                  project.tasks || []
-                                              ).map(
-                                                  (task) =>
-                                                      task.id ===
-                                                      action.payload.id
-                                                          ? action.payload
-                                                          : task
-                                              ),
-                                          }
-                                        : project
-                            ),
+                                                  tasks: (
+                                                      project.tasks || []
+                                                  )
+                                                      .filter(Boolean)
+                                                      .map(
+                                                          (task) =>
+                                                              task.id ===
+                                                              action.payload.id
+                                                                  ? action.payload
+                                                                  : task
+                                                      ),
+                                              }
+                                            : project
+                                ),
                         };
                     }
                 );
@@ -342,13 +357,14 @@ const workspaceSlice = createSlice({
                 );
         },
 
-
         // ==================================================
         // DELETE TASK
         // ==================================================
 
         deleteTask: (state, action) => {
-            if (!state.currentWorkspace) return;
+            if (!state.currentWorkspace) {
+                return;
+            }
 
             const workspaceId =
                 state.currentWorkspace.id;
@@ -374,20 +390,24 @@ const workspaceSlice = createSlice({
 
                             projects: (
                                 workspace.projects || []
-                            ).map(
-                                (project) => ({
-                                    ...project,
+                            )
+                                .filter(Boolean)
+                                .map(
+                                    (project) => ({
+                                        ...project,
 
-                                    tasks: (
-                                        project.tasks || []
-                                    ).filter(
-                                        (task) =>
-                                            !taskIds.includes(
-                                                task.id
-                                            )
-                                    ),
-                                })
-                            ),
+                                        tasks: (
+                                            project.tasks || []
+                                        )
+                                            .filter(Boolean)
+                                            .filter(
+                                                (task) =>
+                                                    !taskIds.includes(
+                                                        task.id
+                                                    )
+                                            ),
+                                    })
+                                ),
                         };
                     }
                 );
@@ -399,7 +419,6 @@ const workspaceSlice = createSlice({
                 );
         },
     },
-
 
     // ======================================================
     // EXTRA REDUCERS
@@ -419,7 +438,6 @@ const workspaceSlice = createSlice({
             }
         );
 
-
         // ==================================================
         // FETCH WORKSPACES - FULFILLED
         // ==================================================
@@ -438,9 +456,10 @@ const workspaceSlice = createSlice({
                     workspaces
                 );
 
-                state.workspaces = workspaces;
-                state.error = null;
+                state.workspaces =
+                    workspaces;
 
+                state.error = null;
 
                 // ------------------------------------------
                 // No workspace
@@ -448,7 +467,8 @@ const workspaceSlice = createSlice({
 
                 if (workspaces.length === 0) {
 
-                    state.currentWorkspace = null;
+                    state.currentWorkspace =
+                        null;
 
                     localStorage.removeItem(
                         "currentWorkspaceId"
@@ -459,7 +479,6 @@ const workspaceSlice = createSlice({
                     return;
                 }
 
-
                 // ------------------------------------------
                 // Get saved workspace ID
                 // ------------------------------------------
@@ -468,7 +487,6 @@ const workspaceSlice = createSlice({
                     localStorage.getItem(
                         "currentWorkspaceId"
                     );
-
 
                 // ------------------------------------------
                 // Find saved workspace
@@ -481,7 +499,6 @@ const workspaceSlice = createSlice({
                             savedWorkspaceId
                     );
 
-
                 // ------------------------------------------
                 // Select workspace
                 // ------------------------------------------
@@ -489,7 +506,6 @@ const workspaceSlice = createSlice({
                 state.currentWorkspace =
                     savedWorkspace ||
                     workspaces[0];
-
 
                 // ------------------------------------------
                 // Save current workspace
@@ -500,11 +516,9 @@ const workspaceSlice = createSlice({
                     state.currentWorkspace.id
                 );
 
-
                 state.loading = false;
             }
         );
-
 
         // ==================================================
         // FETCH WORKSPACES - REJECTED
@@ -529,7 +543,6 @@ const workspaceSlice = createSlice({
     },
 });
 
-
 // ======================================================
 // EXPORT ACTIONS
 // ======================================================
@@ -545,7 +558,6 @@ export const {
     updateTask,
     deleteTask,
 } = workspaceSlice.actions;
-
 
 // ======================================================
 // EXPORT REDUCER

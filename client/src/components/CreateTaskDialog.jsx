@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { format } from "date-fns";
+import { useAuth } from "@clerk/react";
+import api from "../configs/api";
+import toast from "react-hot-toast";
+import { addTask } from "../features/workspaceSlice";
 
 export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, projectId }) {
+    const { getToken } = useAuth()
+    const dispatch = useDispatch()
+
     const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
     const project = currentWorkspace?.projects.find((p) => p.id === projectId);
     const teamMembers = project?.members || [];
@@ -20,11 +27,69 @@ export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, pr
     });
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+    e.preventDefault();
 
+    if (!currentWorkspace?.id) {
+        return toast.error("Workspace not found");
+    }
 
-    };
+    if (!projectId) {
+        return toast.error("Project ID is missing");
+    }
 
+    setIsSubmitting(true);
+
+    try {
+        const token = await getToken();
+
+        if (!token) {
+            throw new Error("Authentication token not found");
+        }
+
+        const { data } = await api.post(
+            "/api/tasks",
+            {
+                ...formData,
+                workspaceId: currentWorkspace.id,
+                projectId,
+                assigneeId: formData.assigneeId || null,
+                due_date: formData.due_date || null,
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        setShowCreateTask(false);
+
+        setFormData({
+            title: "",
+            description: "",
+            type: "TASK",
+            status: "TODO",
+            priority: "MEDIUM",
+            assigneeId: "",
+            due_date: "",
+        });
+
+        toast.success(data.message || "Task created successfully");
+
+        dispatch(addTask(data.task));
+
+    } catch (error) {
+        console.error("CREATE TASK ERROR:", error);
+
+        toast.error(
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to create task"
+        );
+    } finally {
+        setIsSubmitting(false);
+    }
+};
     return showCreateTask ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/60 backdrop-blur">
             <div className="bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg shadow-lg w-full max-w-md p-6 text-zinc-900 dark:text-white">
