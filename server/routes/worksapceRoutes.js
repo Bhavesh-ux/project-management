@@ -1,10 +1,25 @@
-import express from "express"
-import { addMember, getUserWorkSpaces } from "../controllers/workspaceController.js";
+
+import express from "express";
+
+import {
+    addMember,
+    getUserWorkSpaces,
+    syncCurrentUser
+} from "../controllers/workspaceController.js";
 
 const worksapceRouter = express.Router();
 
-worksapceRouter.get('/',getUserWorkSpaces)
-worksapceRouter.post('/add-member',addMember)
+
+// Sync current Clerk user to Prisma
+worksapceRouter.get("/sync-user", syncCurrentUser);
 
 
-export default worksapceRouter
+// Get user workspaces
+worksapceRouter.get("/", getUserWorkSpaces);
+
+
+// Add workspace member
+worksapceRouter.post("/add-member", addMember);
+
+
+export default worksapceRouter;
