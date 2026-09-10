@@ -100,6 +100,21 @@ export const getUserWorkSpaces = async (req, res) => {
         await syncUserToDatabase(userId);
 
         // ------------------------------------------------
+        // DEBUG: CHECK USER MEMBERSHIP
+        // ------------------------------------------------
+
+        const members = await prisma.workspaceMember.findMany({
+            where: {
+                userId: userId
+            }
+        });
+
+        console.log("======================================");
+        console.log("CLERK USER ID:", userId);
+        console.log("MATCHING MEMBERS:", members);
+        console.log("======================================");
+
+        // ------------------------------------------------
         // Get user's workspaces
         // ------------------------------------------------
 
@@ -145,20 +160,27 @@ export const getUserWorkSpaces = async (req, res) => {
             }
         });
 
-        console.log(
-            "WORKSPACES FOUND:",
-            workspaces.length
-        );
+        // ------------------------------------------------
+        // DEBUG: CHECK FOUND WORKSPACES
+        // ------------------------------------------------
+
+        console.log("======================================");
+        console.log("WORKSPACES FOUND:", workspaces.length);
+        console.log("WORKSPACES DATA:", workspaces);
+        console.log("======================================");
+
+        // ------------------------------------------------
+        // Send response
+        // ------------------------------------------------
 
         res.json({
             workspaces
         });
 
     } catch (error) {
-        console.log(
-            "GET WORKSPACES ERROR:",
-            error
-        );
+        console.log("======================================");
+        console.log("GET WORKSPACES ERROR:", error);
+        console.log("======================================");
 
         res.status(500).json({
             message: error.message
@@ -188,7 +210,6 @@ export const addMember = async (req, res) => {
             message
         } = req.body;
 
-
         // ------------------------------------------------
         // Check required parameters
         // ------------------------------------------------
@@ -198,7 +219,6 @@ export const addMember = async (req, res) => {
                 message: "Missing required parameters"
             });
         }
-
 
         // ------------------------------------------------
         // Check valid role
@@ -210,7 +230,6 @@ export const addMember = async (req, res) => {
             });
         }
 
-
         // ------------------------------------------------
         // Find user by email
         // ------------------------------------------------
@@ -221,13 +240,11 @@ export const addMember = async (req, res) => {
             }
         });
 
-
         if (!user) {
             return res.status(404).json({
                 message: "User not found"
             });
         }
-
 
         // ------------------------------------------------
         // Find workspace
@@ -244,13 +261,11 @@ export const addMember = async (req, res) => {
                 }
             });
 
-
         if (!workspace) {
             return res.status(404).json({
                 message: "Workspace not found"
             });
         }
-
 
         // ------------------------------------------------
         // Check current user is ADMIN
@@ -262,7 +277,6 @@ export const addMember = async (req, res) => {
                     member.userId === userId
             );
 
-
         if (
             !currentMember ||
             currentMember.role !== "ADMIN"
@@ -272,7 +286,6 @@ export const addMember = async (req, res) => {
                     "You do not have admin privileges"
             });
         }
-
 
         // ------------------------------------------------
         // Check if target user already exists
@@ -284,14 +297,12 @@ export const addMember = async (req, res) => {
                     member.userId === user.id
             );
 
-
         if (existingMember) {
             return res.status(400).json({
                 message:
                     "User is already a member"
             });
         }
-
 
         // ------------------------------------------------
         // Create workspace member
@@ -306,7 +317,6 @@ export const addMember = async (req, res) => {
                     message: message || ""
                 }
             });
-
 
         res.json({
             member,
