@@ -17,12 +17,24 @@ export const clerkWebhookHandler = async (req, res) => {
             return res.status(400).json({ message: "Missing svix headers" });
         }
 
+        console.log("RAW BODY TYPE:", typeof req.body, "IS BUFFER:", Buffer.isBuffer(req.body));
+
+        let payload;
+
+        if (Buffer.isBuffer(req.body)) {
+            payload = req.body;
+        } else if (typeof req.body === "string") {
+            payload = req.body;
+        } else {
+            payload = JSON.stringify(req.body);
+        }
+
         const wh = new Webhook(WEBHOOK_SECRET);
 
         let evt;
 
         try {
-            evt = wh.verify(req.body, {
+            evt = wh.verify(payload, {
                 "svix-id": svix_id,
                 "svix-timestamp": svix_timestamp,
                 "svix-signature": svix_signature,
@@ -37,91 +49,42 @@ export const clerkWebhookHandler = async (req, res) => {
 
         console.log("CLERK WEBHOOK EVENT:", eventType);
 
-        // ==================================================
-        // ORGANIZATION CREATED -> Create Workspace
-        // ==================================================
-
         if (eventType === "organization.created") {
             const { id, name, slug, image_url, created_by } = data;
 
             await prisma.workspace.upsert({
                 where: { id: id },
-                update: {
-                    name: name,
-                    slug: slug,
-                    image_url: image_url || "",
-                },
-                create: {
-                    id: id,
-                    name: name,
-                    slug: slug,
-                    image_url: image_url || "",
-                    ownerId: created_by,
-                },
+                update: { name, slug, image_url: image_url || "" },
+                create: { id, name, slug, image_url: image_url || "", ownerId: created_by },
             });
 
-            // Add creator as ADMIN member
             await prisma.workspaceMember.upsert({
-                where: {
-                    userId_workspaceId: {
-                        userId: created_by,
-                        workspaceId: id,
-                    },
-                },
+                where: { userId_workspaceId: { userId: created_by, workspaceId: id } },
                 update: {},
-                create: {
-                    userId: created_by,
-                    workspaceId: id,
-                    role: "ADMIN",
-                },
+                create: { userId: created_by, workspaceId: id, role: "ADMIN" },
             });
 
             console.log("WORKSPACE CREATED FROM WEBHOOK:", id);
         }
 
-        // ==================================================
-        // ORGANIZATION MEMBERSHIP CREATED -> Add Member
-        // ==================================================
-
         if (eventType === "organizationMembership.created") {
             const { organization, public_user_data, role } = data;
-
             const workspaceId = organization.id;
             const userId = public_user_data.user_id;
-
             const memberRole = role === "org:admin" ? "ADMIN" : "MEMBER";
 
             await prisma.workspaceMember.upsert({
-                where: {
-                    userId_workspaceId: {
-                        userId: userId,
-                        workspaceId: workspaceId,
-                    },
-                },
+                where: { userId_workspaceId: { userId, workspaceId } },
                 update: { role: memberRole },
-                create: {
-                    userId: userId,
-                    workspaceId: workspaceId,
-                    role: memberRole,
-                },
+                create: { userId, workspaceId, role: memberRole },
             });
 
             console.log("MEMBER ADDED FROM WEBHOOK:", userId, workspaceId);
         }
 
-        // ==================================================
-        // ORGANIZATION DELETED -> Delete Workspace
-        // ==================================================
-
         if (eventType === "organization.deleted") {
             const { id } = data;
-
-            await prisma.workspace.delete({
-                where: { id: id },
-            }).catch(() => {
-                // Ignore if already deleted
-            });
-
+            await prisma.workspace.delete({ where: { id } }).catch(() => {});
             console.log("WORKSPACE DELETED FROM WEBHOOK:", id);
         }
 
