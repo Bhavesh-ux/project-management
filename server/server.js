@@ -1,6 +1,6 @@
 import express from 'express';
 import 'dotenv/config';
-import cors from  'cors';
+import cors from 'cors';
 import { clerkMiddleware } from '@clerk/express'
 import { serve } from "inngest/express";
 import { inngest, functions } from "./inngest/index.js"
@@ -9,8 +9,12 @@ import { protect } from './middeware/authMiddleware.js';
 import projectRouter from './routes/projectRoutes.js';
 import taskRouter from './routes/taskRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
+import webhookRouter from './routes/webhookRoutes.js';   // NEW
 
-const app = express ()
+const app = express()
+
+// IMPORTANT: Webhook route needs raw body, register BEFORE express.json()
+app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRouter);   // NEW
 
 app.use(express.json());
 app.use(cors())
@@ -21,7 +25,7 @@ app.get('/', (req, res)=> res.send('Server is live!'));
 app.use("/api/inngest", serve({ client: inngest, functions }));
 
 // Routes 
-app.use("/api/workspaces",protect, worksapceRouter)
+app.use("/api/workspaces", protect, worksapceRouter)
 app.use("/api/projects", protect, projectRouter)
 app.use("/api/tasks", protect, taskRouter)
 app.use("/api/comments", protect, commentRoutes);
